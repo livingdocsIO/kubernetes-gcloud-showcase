@@ -9,8 +9,16 @@ provider "random" {
   version = "~> 2.0"
 }
 
-resource "google_compute_disk" "postgres" {
-  name = "postgres-disk"
+resource "google_compute_disk" "mysql" {
+  name = "mysql-disk"
+  #gcloud compute disk-types list
+  type = "pd-standard"
+  zone = "us-central1-a"
+  size = 10
+}
+
+resource "google_compute_disk" "wordpress" {
+  name = "wordpress-disk"
   #gcloud compute disk-types list
   type = "pd-standard"
   zone = "us-central1-a"

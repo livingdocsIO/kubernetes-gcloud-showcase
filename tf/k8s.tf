@@ -9,40 +9,141 @@ provider "kubernetes" {
 }
 
 
-resource "kubernetes_service" "example" {
+resource "kubernetes_service" "mysql" {
   metadata {
-    name = "terraform-service-example"
+    name = "mysql"
+    labels = {
+      app = "mysql"
+    }
   }
+
   spec {
     selector {
-      app = "${kubernetes_pod.example.metadata.0.labels.app}"
+      app = "${kubernetes_pod.mysql.metadata.0.labels.app}"
     }
-    session_affinity = "ClientIP"
-    port {
-      port = 8080
-      target_port = 80
+    type = "ClusterIP"
+    port =  {
+      port = 3306
     }
-
-    type = "LoadBalancer"
   }
 }
 
-resource "kubernetes_pod" "example" {
+resource "kubernetes_pod" "mysql" {
   metadata {
-    name = "terraform-pod-example"
+    name = "mysql"
     labels {
-      app = "MyApp"
+      app = "mysql"
     }
   }
-
   spec {
     container {
-      image = "nginx:1.7.9"
-      name  = "example"
+      image = "mysql:5.6"
+      name = "mysql"
+
+      env {
+        name = "MYSQL_ROOT_PASSWORD"
+        value_from {
+          secret_key_ref {
+            name = "mysql"
+            key = "password"
+          }
+        }
+      }
+      port {
+        container_port = 3306
+        name = "mysql"
+      }
+
+      volume_mount {
+        name = "mysql-persistent-storage"
+        mount_path = "/var/lib/mysql"
+      }
+    }
+    volume {
+      name = "mysql-persistent-storage"
+      gce_persistent_disk {
+        pd_name = "${google_compute_disk.mysql.name}"
+      }
+
     }
   }
 }
 
-output "service_endpoint" {
-  value = "${kubernetes_service.example.load_balancer_ingress}"
+resource "kubernetes_secret" "mysql" {
+  metadata {
+    name = "mysql"
+  }
+  data {
+    password = "P4ssw0rd"
+  }
 }
+
+resource "kubernetes_pod" "wordpress" {
+  metadata {
+    name = "wordpress"
+    labels {
+      app = "wordpress"
+    }
+  }
+  spec {
+    container {
+      image = "wordpress"
+      name = "wordpress"
+      env {
+        name = "WORDPRESS_DB_HOST"
+        value = "mysql:3306"
+      }
+      env {
+        name = "WORDPRESS_DB_PASSWORD"
+        value_from {
+          secret_key_ref {
+            name = "mysql"
+            key = "password"
+          }
+        }
+      }
+      port {
+        container_port = 80
+        name = "wordpress"
+      }
+
+      volume_mount {
+        name = "wordpress-persistent-storage"
+        mount_path = "/var/www/html"
+      }
+    }
+    volume {
+      name = "wordpress-persistent-storage"
+      gce_persistent_disk {
+        pd_name = "${google_compute_disk.wordpress.name}"
+      }
+    }
+  }
+}
+resource "kubernetes_service" "wordpress" {
+  metadata {
+    name = "wordpress"
+    labels = {
+      app = "wordpress"
+    }
+  }
+
+  spec {
+    selector {
+      app = "${kubernetes_pod.wordpress.metadata.0.labels.app}"
+    }
+    type = "LoadBalancer"
+    selector {
+      app = "${kubernetes_pod.wordpress.metadata.0.labels.app}"
+    }
+    port =  {
+      port = 80
+      target_port = 80
+      protocol = "TCP"
+
+    }
+  }
+}
+
+
+
