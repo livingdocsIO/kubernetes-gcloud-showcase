@@ -11,6 +11,6 @@ terraform apply
 ## TODO
 
 - [x] Spin up a kubernetes Cluster in Google Cloud
-- [] Deploy a very simple application and access it
-- [] Deploy an application with a database
+- [X] Deploy a very simple application and access it
+- [ ] Deploy an application with a database
 

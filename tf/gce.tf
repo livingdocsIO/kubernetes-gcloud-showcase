@@ -17,14 +17,19 @@ resource "google_compute_disk" "postgres" {
   size = 10
 }
 
+locals {
+  k8s_passwd = "${random_string.password.result}"
+  k8s_username = "k8s-admin"
+}
+
 resource "google_container_cluster" "primary" {
   name = "livingdocs"
 
-  initial_node_count = 3
+  initial_node_count = 1
 
   master_auth {
-    username = "k8s-admin"
-    password = "${random_string.password.result}"
+    username = "${local.k8s_username}"
+    password = "${local.k8s_passwd}"
   }
 
   node_config {
@@ -46,22 +51,3 @@ resource "google_container_cluster" "primary" {
 resource "random_string" "password" {
   length = 16
 }
-
-
-# The following outputs allow authentication and connectivity to the GKE Cluster.
-output "client_certificate" {
-  value = "${google_container_cluster.primary.master_auth.0.client_certificate}"
-}
-
-output "client_key" {
-  value = "${google_container_cluster.primary.master_auth.0.client_key}"
-}
-
-output "cluster_ca_certificate" {
-  value = "${google_container_cluster.primary.master_auth.0.cluster_ca_certificate}"
-}
-
-output "password" {
-  value = "${random_string.password.result}"
-}
-
