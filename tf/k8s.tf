@@ -144,6 +144,3 @@ resource "kubernetes_service" "wordpress" {
     }
   }
 }
-
-
-
