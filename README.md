@@ -5,7 +5,7 @@
 This is a showcase to demonstrate the capabilities of terraform and 
 kubernetes in the context of a livingdocs system.
 
-## How to run
+## Getting started
 
 ### Prerequisites
 
@@ -25,6 +25,9 @@ One needs a _project_ in Google Cloud to do anything.
 This can be achieved by running `gcloud projects create my-special-project`.
 In order to use this project per default from then on run `gcloud config set project my-special-project`.
 
+### Running the showcase
+
+Spin up the cluster with:
 
 ```bash
 gcloud auth application-default login
@@ -33,7 +36,11 @@ terraform init
 terraform apply
 ```
 
-# How to 
+The `kubectl` tool can be authenticated with a simple `gcloud container clusters get-credentials`.
+
+
+
+All the resources will be destroyed with a simple `terraform destroy`.
 
 ## TODO
 
