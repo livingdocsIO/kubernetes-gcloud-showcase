@@ -9,6 +9,8 @@ kubernetes in the context of a livingdocs system.
 
 ### Prerequisites
 
+TODO: Add instructions about copying private containers
+
 #### Installation
 
 - [terraform](https://www.terraform.io/downloads.html)
@@ -36,7 +38,7 @@ terraform init
 terraform apply
 ```
 
-The `kubectl` tool can be authenticated with a simple `gcloud container clusters get-credentials`.
+The `kubectl` tool can be authenticated with a simple `gcloud container clusters get-credentials livingdocs`.
 
 
 
@@ -53,5 +55,5 @@ All the resources will be destroyed with a simple `terraform destroy`.
   - [ ] Liveness and readiness probes
   - [ ] This could totally be documented afterwards but where?
   - [ ] What do we want to show in the presentation?
-- [ ] Get Ivans take on PoC requirements
+- [X] Get Ivans take on PoC requirements
   

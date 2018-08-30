@@ -9,138 +9,298 @@ provider "kubernetes" {
 }
 
 
-resource "kubernetes_service" "mysql" {
+//                 _
+// _ __   ___  ___| |_ __ _ _ __ ___  ___
+//| '_ \ / _ \/ __| __/ _` | '__/ _ \/ __|
+//| |_) | (_) \__ \ || (_| | | |  __/\__ \
+//| .__/ \___/|___/\__\__, |_|  \___||___/
+//|_|                 |___/
+
+
+locals {
+  postgress_port = 5432
+}
+
+resource "random_string" "postgres_password" {
+  length = 16
+}
+
+resource "kubernetes_service" "postgres" {
   metadata {
-    name = "mysql"
+    name = "postgres"
     labels = {
-      app = "mysql"
+      app = "postgres"
     }
   }
 
   spec {
     selector {
-      app = "${kubernetes_pod.mysql.metadata.0.labels.app}"
+      app = "${kubernetes_pod.postgres.metadata.0.labels.app}"
     }
     type = "ClusterIP"
-    port =  {
-      port = 3306
+    port = {
+      port = "${local.postgress_port}"
     }
   }
 }
 
-resource "kubernetes_pod" "mysql" {
+resource "kubernetes_pod" "postgres" {
   metadata {
-    name = "mysql"
+    name = "postgres"
     labels {
-      app = "mysql"
+      app = "postgres"
     }
   }
   spec {
     container {
-      image = "mysql:5.6"
-      name = "mysql"
+      image = "livingdocs/postgres:9.6"
+      name = "postgres"
 
       env {
-        name = "MYSQL_ROOT_PASSWORD"
+        name = "POSTGRES_PASSWORD"
         value_from {
           secret_key_ref {
-            name = "mysql"
+            name = "postgres"
             key = "password"
           }
         }
       }
-      port {
-        container_port = 3306
-        name = "mysql"
+      liveness_probe {
+        exec {
+          command = [
+            "/bin/sh",
+            "-i",
+            "-c",
+            "pg_isready -U postgres -h 127.0.0.1 -p ${local.postgress_port}"]
+
+        }
+        failure_threshold = 3
+        initial_delay_seconds = 30
+        period_seconds = 10
+        success_threshold = 1
+        timeout_seconds = 1
       }
 
+      port {
+        container_port = "${local.postgress_port}"
+      }
+
+
       volume_mount {
-        name = "mysql-persistent-storage"
-        mount_path = "/var/lib/mysql"
+        name = "postgres-persistent-storage"
+        mount_path = "/var/lib/postgres"
       }
     }
     volume {
-      name = "mysql-persistent-storage"
+      name = "postgres-persistent-storage"
       gce_persistent_disk {
-        pd_name = "${google_compute_disk.mysql.name}"
+        pd_name = "${google_compute_disk.postgres.name}"
       }
 
     }
   }
 }
 
-resource "kubernetes_secret" "mysql" {
+resource "kubernetes_secret" "postgres" {
   metadata {
-    name = "mysql"
+    name = "postgres"
   }
   data {
-    password = "P4ssw0rd"
+    password = "${random_string.postgres_password.result}"
   }
 }
 
-resource "kubernetes_pod" "wordpress" {
-  metadata {
-    name = "wordpress"
-    labels {
-      app = "wordpress"
-    }
-  }
-  spec {
-    container {
-      image = "wordpress"
-      name = "wordpress"
-      env {
-        name = "WORDPRESS_DB_HOST"
-        value = "mysql:3306"
-      }
-      env {
-        name = "WORDPRESS_DB_PASSWORD"
-        value_from {
-          secret_key_ref {
-            name = "mysql"
-            key = "password"
-          }
-        }
-      }
-      port {
-        container_port = 80
-        name = "wordpress"
-      }
+//      _           _   _                              _
+//  ___| | __ _ ___| |_(_) ___ ___  ___  __ _ _ __ ___| |__
+// / _ \ |/ _` / __| __| |/ __/ __|/ _ \/ _` | '__/ __| '_ \
+//|  __/ | (_| \__ \ |_| | (__\__ \  __/ (_| | | | (__| | | |
+//\___|_|\__,_|___/\__|_|\___|___/\___|\__,_|_|  \___|_| |_|
+//
 
-      volume_mount {
-        name = "wordpress-persistent-storage"
-        mount_path = "/var/www/html"
-      }
-    }
-    volume {
-      name = "wordpress-persistent-storage"
-      gce_persistent_disk {
-        pd_name = "${google_compute_disk.wordpress.name}"
-      }
-    }
-  }
-}
-resource "kubernetes_service" "wordpress" {
+resource "kubernetes_service" "elasticsearch" {
   metadata {
-    name = "wordpress"
+    name = "elasticsearch"
     labels = {
-      app = "wordpress"
+      app = "elasticsearch"
     }
   }
 
   spec {
     selector {
-      app = "${kubernetes_pod.wordpress.metadata.0.labels.app}"
+      app = "${kubernetes_pod.elasticsearch.metadata.0.labels.app}"
+    }
+    type = "ClusterIP"
+    port = {
+      port = 9200
+    }
+  }
+}
+
+resource "kubernetes_pod" "elasticsearch" {
+  metadata {
+    name = "elasticsearch"
+    labels {
+      app = "elasticsearch"
+    }
+  }
+  spec {
+    container {
+      image = "livingdocs/elasticsearch"
+      name = "elasticsearch"
+      port {
+        container_port = 9200
+        name = "rest"
+      }
+      port {
+        container_port = 9300
+        name = "transport"
+      }
+      liveness_probe {
+        tcp_socket {
+          port = "transport"
+        }
+        initial_delay_seconds = 20
+        period_seconds = 10
+      }
+    }
+
+  }
+}
+
+// _ _       _                 _
+//| (_)_   _(_)_ __   __ _  __| | ___   ___ ___       ___  ___ _ ____   _____ _ __
+//| | \ \ / / | '_ \ / _` |/ _` |/ _ \ / __/ __|_____/ __|/ _ \ '__\ \ / / _ \ '__|
+//| | |\ V /| | | | | (_| | (_| | (_) | (__\__ \_____\__ \  __/ |   \ V /  __/ |
+//|_|_| \_/ |_|_| |_|\__, |\__,_|\___/ \___|___/     |___/\___|_|    \_/ \___|_|
+//|___/
+
+//resource "kubernetes_config_map" "bluewin-server" {
+//  "metadata" {
+//    name = "bluewin-server"
+//  }
+//  data {
+//    DB__HOST = "${kubernetes_service.postgres.metadata.0.name}"
+//    DB__PORT = "${kubernetes_service.postgres.spec.0.port.0.port}"
+//    DB__USER = "postgres"
+//  }
+//
+//}
+
+resource "kubernetes_pod" "bluewin_server" {
+  metadata {
+    name = "bluewin-server"
+    labels {
+      app = "bluewin-server"
+    }
+  }
+  spec {
+
+
+    init_container {
+      name = "database-setup"
+      image = "gcr.io/kubernetes-test-214207/bluewin-server:db-config"
+      command = ["/bin/sh", "-c", "-i"]
+      args = ["grunt database-recreate && grunt migrate"]
+      env {
+        name = "db__host"
+        value = "${kubernetes_service.postgres.metadata.0.name}"
+      }
+      env {
+        name = "db__port"
+        value = "${kubernetes_service.postgres.spec.0.port.0.port}"
+      }
+      env {
+        name = "db__user"
+        value = "postgres"
+      }
+      env {
+        name = "db__password"
+        value_from {
+          secret_key_ref {
+            name = "postgres"
+            key = "password"
+          }
+        }
+      }
+
+      env {
+        name = "PGPASSWORD"
+        value_from {
+          secret_key_ref {
+            name = "postgres"
+            key = "password"
+          }
+        }
+      }
+
+      env {
+        name = "search__host"
+        value = "http://${kubernetes_service.elasticsearch.metadata.0.name}:${kubernetes_service.elasticsearch.spec.0.port.0.port}"
+      }
+    }
+
+    container {
+      image = "gcr.io/kubernetes-test-214207/bluewin-server:db-config"
+      name = "bluewin-server"
+      env {
+        name = "db__host"
+        value = "${kubernetes_service.postgres.metadata.0.name}"
+      }
+      env {
+        name = "db__port"
+        value = "${kubernetes_service.postgres.spec.0.port.0.port}"
+      }
+      env {
+        name = "db__user"
+        value = "postgres"
+      }
+      env {
+        name = "db__password"
+        value_from {
+          secret_key_ref {
+            name = "postgres"
+            key = "password"
+          }
+        }
+      }
+      env {
+        name = "search__host"
+        value = "http://${kubernetes_service.elasticsearch.metadata.0.name}:${kubernetes_service.elasticsearch.spec.0.port.0.port}"
+      }
+      port {
+        container_port = 9090
+        name = "http"
+      }
+      liveness_probe {
+        http_get {
+          port = "http"
+          path = "/status"
+
+        }
+      }
+    }
+  }
+}
+
+resource "kubernetes_service" "bluewin-server" {
+  metadata {
+    name = "bluewin-server"
+    labels = {
+      app = "bluewin-server"
+    }
+  }
+  spec {
+    selector {
+      app = "${kubernetes_pod.bluewin_server.metadata.0.labels.app}"
     }
     type = "LoadBalancer"
     selector {
-      app = "${kubernetes_pod.wordpress.metadata.0.labels.app}"
+      app = "${kubernetes_pod.bluewin_server.metadata.0.labels.app}"
     }
-    port =  {
+    port = {
       port = 80
-      target_port = 80
+      target_port = 9090
       protocol = "TCP"
-
     }
   }
 }
