@@ -25,30 +25,13 @@ resource "random_string" "postgres_password" {
   length = 16
 }
 
-resource "kubernetes_service" "postgres" {
-  metadata {
-    name = "postgres"
-    labels = {
-      app = "postgres"
-    }
-  }
-
-  spec {
-    selector {
-      app = "${kubernetes_pod.postgres.metadata.0.labels.app}"
-    }
-    type = "ClusterIP"
-    port = {
-      port = "${local.postgress_port}"
-    }
-  }
-}
-
 resource "kubernetes_pod" "postgres" {
   metadata {
     name = "postgres"
     labels {
-      app = "postgres"
+      app = "bluewin"
+      tier = "db"
+      type = "postgres"
     }
   }
   spec {
@@ -101,9 +84,38 @@ resource "kubernetes_pod" "postgres" {
   }
 }
 
+
+resource "kubernetes_service" "postgres" {
+  metadata {
+    name = "postgres"
+    labels {
+      app = "bluewin"
+      tier = "db"
+      type = "postgres"
+    }
+  }
+
+  spec {
+    selector {
+      app = "${kubernetes_pod.postgres.metadata.0.labels.app}"
+      tier = "${kubernetes_pod.postgres.metadata.0.labels.tier}"
+    }
+    type = "ClusterIP"
+    port = {
+      port = "${local.postgress_port}"
+    }
+  }
+}
+
+
 resource "kubernetes_secret" "postgres" {
   metadata {
     name = "postgres"
+    labels {
+      app = "bluewin"
+      tier = "db"
+      type = "postgres"
+    }
   }
   data {
     password = "${random_string.postgres_password.result}"
@@ -121,13 +133,16 @@ resource "kubernetes_service" "elasticsearch" {
   metadata {
     name = "elasticsearch"
     labels = {
-      app = "elasticsearch"
+      app = "bluewin"
+      tier = "search"
+      type = "elasticsearch"
     }
   }
 
   spec {
     selector {
       app = "${kubernetes_pod.elasticsearch.metadata.0.labels.app}"
+      tier = "${kubernetes_pod.elasticsearch.metadata.0.labels.tier}"
     }
     type = "ClusterIP"
     port = {
@@ -140,7 +155,9 @@ resource "kubernetes_pod" "elasticsearch" {
   metadata {
     name = "elasticsearch"
     labels {
-      app = "elasticsearch"
+      app = "bluewin"
+      tier = "search"
+      type = "elasticsearch"
     }
   }
   spec {
@@ -178,12 +195,11 @@ resource "kubernetes_pod" "bluewin_server" {
   metadata {
     name = "bluewin-server"
     labels {
-      app = "bluewin-server"
+      app = "bluewin"
+      tier = "backend"
     }
   }
   spec {
-
-
     init_container {
       name = "database-setup"
       image = "gcr.io/kubernetes-test-214207/bluewin-server:db-config"
@@ -211,7 +227,6 @@ resource "kubernetes_pod" "bluewin_server" {
           }
         }
       }
-
       env {
         name = "PGPASSWORD"
         value_from {
@@ -221,7 +236,6 @@ resource "kubernetes_pod" "bluewin_server" {
           }
         }
       }
-
       env {
         name = "search__host"
         value = "http://${kubernetes_service.elasticsearch.metadata.0.name}:${kubernetes_service.elasticsearch.spec.0.port.0.port}"
@@ -275,17 +289,18 @@ resource "kubernetes_service" "bluewin-server" {
   metadata {
     name = "bluewin-server"
     labels = {
-      app = "bluewin-server"
+      app = "bluewin"
+      tier = "backend"
     }
   }
   spec {
     type = "ClusterIP"
     selector {
       app = "${kubernetes_pod.bluewin_server.metadata.0.labels.app}"
+      tier = "${kubernetes_pod.bluewin_server.metadata.0.labels.tier}"
     }
     port = {
       port = 9090
-
     }
   }
 }
@@ -294,7 +309,8 @@ resource "kubernetes_pod" "bluewin-editor" {
   "metadata" {
     name = "bluewin-editor"
     labels = {
-      app = "bluewin-editor"
+      app = "bluewin"
+      tier = "frontend"
     }
   }
   "spec" {
@@ -313,13 +329,15 @@ resource "kubernetes_service" "bluewin-editor" {
   metadata {
     name = "bluewin-editor"
     labels = {
-      app = "bluewin-editor"
+      app = "bluewin"
+      tier = "frontend"
     }
   }
   spec {
     type = "LoadBalancer"
     selector {
       app= "${kubernetes_pod.bluewin-editor.metadata.0.labels.app}"
+      tier = "${kubernetes_pod.bluewin-editor.metadata.0.labels.tier}"
     }
     port {
       port = 80

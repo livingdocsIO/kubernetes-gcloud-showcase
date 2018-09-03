@@ -40,13 +40,9 @@ resource "google_container_cluster" "primary" {
       "https://www.googleapis.com/auth/logging.write",
       "https://www.googleapis.com/auth/monitoring",
     ]
-    labels {
-      foo = "bar"
-    }
-#TODO: No more foo and bar
-    tags = ["foo", "bar"]
+    labels {}
+    tags = []
   }
-
 }
 
 resource "random_string" "k8s-password" {
