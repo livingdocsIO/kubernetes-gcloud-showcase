@@ -174,18 +174,6 @@ resource "kubernetes_pod" "elasticsearch" {
 //|_|_| \_/ |_|_| |_|\__, |\__,_|\___/ \___|___/     |___/\___|_|    \_/ \___|_|
 //|___/
 
-//resource "kubernetes_config_map" "bluewin-server" {
-//  "metadata" {
-//    name = "bluewin-server"
-//  }
-//  data {
-//    DB__HOST = "${kubernetes_service.postgres.metadata.0.name}"
-//    DB__PORT = "${kubernetes_service.postgres.spec.0.port.0.port}"
-//    DB__USER = "postgres"
-//  }
-//
-//}
-
 resource "kubernetes_pod" "bluewin_server" {
   metadata {
     name = "bluewin-server"
@@ -200,6 +188,7 @@ resource "kubernetes_pod" "bluewin_server" {
       name = "database-setup"
       image = "gcr.io/kubernetes-test-214207/bluewin-server:db-config"
       command = ["/bin/sh", "-c", "-i"]
+      //TODO: How to run migrations just once?
       args = ["grunt database-recreate && grunt migrate"]
       env {
         name = "db__host"
@@ -290,17 +279,51 @@ resource "kubernetes_service" "bluewin-server" {
     }
   }
   spec {
-    selector {
-      app = "${kubernetes_pod.bluewin_server.metadata.0.labels.app}"
-    }
-    type = "LoadBalancer"
+    type = "ClusterIP"
     selector {
       app = "${kubernetes_pod.bluewin_server.metadata.0.labels.app}"
     }
     port = {
+      port = 9090
+
+    }
+  }
+}
+
+resource "kubernetes_pod" "bluewin-editor" {
+  "metadata" {
+    name = "bluewin-editor"
+    labels = {
+      app = "bluewin-editor"
+    }
+  }
+  "spec" {
+    container {
+      name = "bluewin-editor"
+      image = "gcr.io/kubernetes-test-214207/bluewin-editor:permission-hack"
+      env {
+        name = "api__host"
+        value = "http://bluewin-server:9090"
+      }
+    }
+  }
+}
+
+resource "kubernetes_service" "bluewin-editor" {
+  metadata {
+    name = "bluewin-editor"
+    labels = {
+      app = "bluewin-editor"
+    }
+  }
+  spec {
+    type = "LoadBalancer"
+    selector {
+      app= "${kubernetes_pod.bluewin-editor.metadata.0.labels.app}"
+    }
+    port {
       port = 80
-      target_port = 9090
-      protocol = "TCP"
+      target_port = "9000"
     }
   }
 }

@@ -50,9 +50,9 @@ All the resources will be destroyed with a simple `terraform destroy`.
 - [X] Deploy a very simple application and access it
 - [X] Deploy an application with a database
 - [X] Make it possible to use private docker images
-- [ ] Provision the actual livingdocs system
-  - [ ] Configuration for the individual server so they can talk to the database/editor/etc
-  - [ ] Liveness and readiness probes
+- [X] Provision the actual livingdocs system
+  - [X] Configuration for the individual server so they can talk to the database/editor/etc
+  - [X] Liveness and readiness probes
   - [ ] This could totally be documented afterwards but where?
   - [ ] What do we want to show in the presentation?
 - [X] Get Ivans take on PoC requirements
