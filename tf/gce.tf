@@ -32,6 +32,10 @@ resource "google_container_cluster" "primary" {
     username = "${local.k8s_username}"
     password = "${local.k8s_passwd}"
   }
+  network_policy {
+    enabled = true
+    provider = "CALICO"
+  }
 
   node_config {
     oauth_scopes = [
