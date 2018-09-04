@@ -8,6 +8,12 @@ provider "kubernetes" {
   cluster_ca_certificate = "${base64decode(google_container_cluster.primary.master_auth.0.cluster_ca_certificate)}"
 }
 
+resource "kubernetes_namespace" "develop" {
+  metadata {
+    name = "livingdocs-develop"
+  }
+}
+
 
 //                 _
 // _ __   ___  ___| |_ __ _ _ __ ___  ___
@@ -28,6 +34,7 @@ resource "random_string" "postgres_password" {
 resource "kubernetes_pod" "postgres" {
   metadata {
     name = "postgres"
+    namespace = "${kubernetes_namespace.develop.metadata.0.name}"
     labels {
       app = "bluewin"
       tier = "db"
@@ -88,6 +95,7 @@ resource "kubernetes_pod" "postgres" {
 resource "kubernetes_service" "postgres" {
   metadata {
     name = "postgres"
+    namespace = "${kubernetes_namespace.develop.metadata.0.name}"
     labels {
       app = "bluewin"
       tier = "db"
@@ -111,6 +119,7 @@ resource "kubernetes_service" "postgres" {
 resource "kubernetes_secret" "postgres" {
   metadata {
     name = "postgres"
+    namespace = "${kubernetes_namespace.develop.metadata.0.name}"
     labels {
       app = "bluewin"
       tier = "db"
@@ -132,6 +141,7 @@ resource "kubernetes_secret" "postgres" {
 resource "kubernetes_service" "elasticsearch" {
   metadata {
     name = "elasticsearch"
+    namespace = "${kubernetes_namespace.develop.metadata.0.name}"
     labels = {
       app = "bluewin"
       tier = "search"
@@ -154,6 +164,7 @@ resource "kubernetes_service" "elasticsearch" {
 resource "kubernetes_pod" "elasticsearch" {
   metadata {
     name = "elasticsearch"
+    namespace = "${kubernetes_namespace.develop.metadata.0.name}"
     labels {
       app = "bluewin"
       tier = "search"
@@ -194,6 +205,7 @@ resource "kubernetes_pod" "elasticsearch" {
 resource "kubernetes_pod" "bluewin_server" {
   metadata {
     name = "bluewin-server"
+    namespace = "${kubernetes_namespace.develop.metadata.0.name}"
     labels {
       app = "bluewin"
       tier = "backend"
@@ -288,6 +300,7 @@ resource "kubernetes_pod" "bluewin_server" {
 resource "kubernetes_service" "bluewin-server" {
   metadata {
     name = "bluewin-server"
+    namespace = "${kubernetes_namespace.develop.metadata.0.name}"
     labels = {
       app = "bluewin"
       tier = "backend"
@@ -308,6 +321,7 @@ resource "kubernetes_service" "bluewin-server" {
 resource "kubernetes_pod" "bluewin-editor" {
   "metadata" {
     name = "bluewin-editor"
+    namespace = "${kubernetes_namespace.develop.metadata.0.name}"
     labels = {
       app = "bluewin"
       tier = "frontend"
@@ -328,6 +342,7 @@ resource "kubernetes_pod" "bluewin-editor" {
 resource "kubernetes_service" "bluewin-editor" {
   metadata {
     name = "bluewin-editor"
+    namespace = "${kubernetes_namespace.develop.metadata.0.name}"
     labels = {
       app = "bluewin"
       tier = "frontend"
