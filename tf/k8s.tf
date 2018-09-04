@@ -45,7 +45,7 @@ resource "kubernetes_pod" "postgres" {
     container {
       image = "livingdocs/postgres:9.6"
       name = "postgres"
-
+      image_pull_policy = "Always"
       env {
         name = "POSTGRES_PASSWORD"
         value_from {
@@ -173,8 +173,9 @@ resource "kubernetes_pod" "elasticsearch" {
   }
   spec {
     container {
-      image = "livingdocs/elasticsearch"
       name = "elasticsearch"
+      image_pull_policy = "Always"
+      image = "livingdocs/elasticsearch"
       port {
         container_port = 9200
         name = "rest"
@@ -215,6 +216,7 @@ resource "kubernetes_replication_controller" "bluewin_server" {
     template {
       init_container {
         name = "database-setup"
+        image_pull_policy = "Always"
         image = "gcr.io/kubernetes-test-214207/bluewin-server:db-config"
         command = [
           "/bin/sh",
@@ -259,6 +261,7 @@ resource "kubernetes_replication_controller" "bluewin_server" {
         }
       }
       container {
+        image_pull_policy = "Always"
         image = "gcr.io/kubernetes-test-214207/bluewin-server:db-config"
         name = "bluewin-server"
         env {
@@ -340,6 +343,7 @@ resource "kubernetes_replication_controller" "bluewin-editor" {
     template {
       container {
         name = "bluewin-editor"
+        image_pull_policy = "Always"
         image = "gcr.io/kubernetes-test-214207/bluewin-editor:permission-hack"
         env {
           name = "api__host"
