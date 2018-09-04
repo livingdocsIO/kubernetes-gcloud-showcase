@@ -202,7 +202,7 @@ resource "kubernetes_pod" "elasticsearch" {
 //|_|_| \_/ |_|_| |_|\__, |\__,_|\___/ \___|___/     |___/\___|_|    \_/ \___|_|
 //|___/
 
-resource "kubernetes_pod" "bluewin_server" {
+resource "kubernetes_replication_controller" "bluewin_server" {
   metadata {
     name = "bluewin-server"
     namespace = "${kubernetes_namespace.develop.metadata.0.name}"
@@ -212,87 +212,96 @@ resource "kubernetes_pod" "bluewin_server" {
     }
   }
   spec {
-    init_container {
-      name = "database-setup"
-      image = "gcr.io/kubernetes-test-214207/bluewin-server:db-config"
-      command = ["/bin/sh", "-c", "-i"]
-      //TODO: How to run migrations just once?
-      args = ["grunt database-recreate && grunt migrate"]
-      env {
-        name = "db__host"
-        value = "${kubernetes_service.postgres.metadata.0.name}"
-      }
-      env {
-        name = "db__port"
-        value = "${kubernetes_service.postgres.spec.0.port.0.port}"
-      }
-      env {
-        name = "db__user"
-        value = "postgres"
-      }
-      env {
-        name = "db__password"
-        value_from {
-          secret_key_ref {
-            name = "postgres"
-            key = "password"
+    template {
+      init_container {
+        name = "database-setup"
+        image = "gcr.io/kubernetes-test-214207/bluewin-server:db-config"
+        command = [
+          "/bin/sh",
+          "-c",
+          "-i"]
+
+        args = [
+          "grunt database-recreate && grunt migrate"]
+        env {
+          name = "db__host"
+          value = "${kubernetes_service.postgres.metadata.0.name}"
+        }
+        env {
+          name = "db__port"
+          value = "${kubernetes_service.postgres.spec.0.port.0.port}"
+        }
+        env {
+          name = "db__user"
+          value = "postgres"
+        }
+        env {
+          name = "db__password"
+          value_from {
+            secret_key_ref {
+              name = "postgres"
+              key = "password"
+            }
           }
         }
-      }
-      env {
-        name = "PGPASSWORD"
-        value_from {
-          secret_key_ref {
-            name = "postgres"
-            key = "password"
+        env {
+          name = "PGPASSWORD"
+          value_from {
+            secret_key_ref {
+              name = "postgres"
+              key = "password"
+            }
           }
         }
+        env {
+          name = "search__host"
+          value = "http://${kubernetes_service.elasticsearch.metadata.0.name}:${kubernetes_service.elasticsearch.spec.0.port.0.port}"
+        }
       }
-      env {
-        name = "search__host"
-        value = "http://${kubernetes_service.elasticsearch.metadata.0.name}:${kubernetes_service.elasticsearch.spec.0.port.0.port}"
+      container {
+        image = "gcr.io/kubernetes-test-214207/bluewin-server:db-config"
+        name = "bluewin-server"
+        env {
+          name = "db__host"
+          value = "${kubernetes_service.postgres.metadata.0.name}"
+        }
+        env {
+          name = "db__port"
+          value = "${kubernetes_service.postgres.spec.0.port.0.port}"
+        }
+        env {
+          name = "db__user"
+          value = "postgres"
+        }
+        env {
+          name = "db__password"
+          value_from {
+            secret_key_ref {
+              name = "postgres"
+              key = "password"
+            }
+          }
+        }
+        env {
+          name = "search__host"
+          value = "http://${kubernetes_service.elasticsearch.metadata.0.name}:${kubernetes_service.elasticsearch.spec.0.port.0.port}"
+        }
+        port {
+          container_port = 9090
+          name = "http"
+        }
+        liveness_probe {
+          http_get {
+            port = "http"
+            path = "/status"
+
+          }
+        }
       }
     }
-
-    container {
-      image = "gcr.io/kubernetes-test-214207/bluewin-server:db-config"
-      name = "bluewin-server"
-      env {
-        name = "db__host"
-        value = "${kubernetes_service.postgres.metadata.0.name}"
-      }
-      env {
-        name = "db__port"
-        value = "${kubernetes_service.postgres.spec.0.port.0.port}"
-      }
-      env {
-        name = "db__user"
-        value = "postgres"
-      }
-      env {
-        name = "db__password"
-        value_from {
-          secret_key_ref {
-            name = "postgres"
-            key = "password"
-          }
-        }
-      }
-      env {
-        name = "search__host"
-        value = "http://${kubernetes_service.elasticsearch.metadata.0.name}:${kubernetes_service.elasticsearch.spec.0.port.0.port}"
-      }
-      port {
-        container_port = 9090
-        name = "http"
-      }
-      liveness_probe {
-        http_get {
-          port = "http"
-          path = "/status"
-
-        }
-      }
+    selector = {
+      app = "bluewin"
+      tier = "backend"
     }
   }
 }
@@ -309,8 +318,8 @@ resource "kubernetes_service" "bluewin-server" {
   spec {
     type = "ClusterIP"
     selector {
-      app = "${kubernetes_pod.bluewin_server.metadata.0.labels.app}"
-      tier = "${kubernetes_pod.bluewin_server.metadata.0.labels.tier}"
+      app = "${kubernetes_replication_controller.bluewin_server.metadata.0.labels.app}"
+      tier = "${kubernetes_replication_controller.bluewin_server.metadata.0.labels.tier}"
     }
     port = {
       port = 9090
@@ -318,8 +327,8 @@ resource "kubernetes_service" "bluewin-server" {
   }
 }
 
-resource "kubernetes_pod" "bluewin-editor" {
-  "metadata" {
+resource "kubernetes_replication_controller" "bluewin-editor" {
+  metadata {
     name = "bluewin-editor"
     namespace = "${kubernetes_namespace.develop.metadata.0.name}"
     labels = {
@@ -327,16 +336,23 @@ resource "kubernetes_pod" "bluewin-editor" {
       tier = "frontend"
     }
   }
-  "spec" {
-    container {
-      name = "bluewin-editor"
-      image = "gcr.io/kubernetes-test-214207/bluewin-editor:permission-hack"
-      env {
-        name = "api__host"
-        value = "http://bluewin-server:9090"
+  spec {
+    template {
+      container {
+        name = "bluewin-editor"
+        image = "gcr.io/kubernetes-test-214207/bluewin-editor:permission-hack"
+        env {
+          name = "api__host"
+          value = "http://bluewin-server:9090"
+        }
       }
     }
+    selector = {
+      app = "bluewin"
+      tier = "frontend"
+    }
   }
+
 }
 
 resource "kubernetes_service" "bluewin-editor" {
@@ -351,8 +367,8 @@ resource "kubernetes_service" "bluewin-editor" {
   spec {
     type = "LoadBalancer"
     selector {
-      app= "${kubernetes_pod.bluewin-editor.metadata.0.labels.app}"
-      tier = "${kubernetes_pod.bluewin-editor.metadata.0.labels.tier}"
+      app = "${kubernetes_replication_controller.bluewin-editor.metadata.0.labels.app}"
+      tier = "${kubernetes_replication_controller.bluewin-editor.metadata.0.labels.tier}"
     }
     port {
       port = 80

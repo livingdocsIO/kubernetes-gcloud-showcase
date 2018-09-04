@@ -53,7 +53,13 @@ All the resources will be destroyed with a simple `terraform destroy`.
 - [X] Provision the actual livingdocs system
   - [X] Configuration for the individual server so they can talk to the database/editor/etc
   - [X] Liveness and readiness probes
-  - [ ] This could totally be documented afterwards but where?
-  - [ ] What do we want to show in the presentation?
+  - [X] Use of replicasets
+  - 
 - [X] Get Ivans take on PoC requirements
+
+## Presentation ideas
+
+- Self healing
+- Autoscaling
+- Utilization
   
