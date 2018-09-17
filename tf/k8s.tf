@@ -222,9 +222,7 @@ resource "kubernetes_replication_controller" "bluewin_server" {
           "/bin/sh",
           "-c",
           "-i"]
-
-        args = [
-          "grunt database-recreate && grunt migrate"]
+        args = ["grunt database-recreate && grunt migrate && grunt user-create-admin"]
         env {
           name = "db__host"
           value = "${kubernetes_service.postgres.metadata.0.name}"
