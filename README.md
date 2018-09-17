@@ -40,11 +40,16 @@ terraform apply
 
 The `kubectl` tool can be authenticated with a simple `gcloud container clusters get-credentials livingdocs`.
 
+Now `kubectl` can be used to interact with the cluster. E. g.:
+- `kubectl get namespaces` to show the namespaces in the cluster
+- `kubectl --namespace livingdocs-develop get pods` to show all the pods in the showcase
+- `kubectl --namespace livingdocs-develop exec -it my-special-pod -- /bin/bash` for a shell on my-special-pod. 
+
 
 
 All the resources will be destroyed with a simple `terraform destroy`.
 
-## TODO
+## TODOs
 
 - [x] Spin up a kubernetes Cluster in Google Cloud
 - [X] Deploy a very simple application and access it
@@ -54,7 +59,11 @@ All the resources will be destroyed with a simple `terraform destroy`.
   - [X] Configuration for the individual server so they can talk to the database/editor/etc
   - [X] Liveness and readiness probes
   - [X] Use of replicasets
-  - 
+  - [ ] Ask how to generate users to show a login and interaction with the system
+- [X] Introduce network policies
+- [ ] Create a deployment + rollback
+- [ ] Some prometheus monitoring
+
 - [X] Get Ivans take on PoC requirements
 
 ## Presentation ideas
